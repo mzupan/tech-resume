@@ -4,14 +4,16 @@ Run this on every resume and cover letter draft before building files. Goal: the
 
 ## Steps
 
-1. **Lint.** `python3 ~/.claude/skills/tech-resume/scripts/lint.py <file> [--type cover]`. It flags HARD (stock AI resume vocabulary, chatbot phrasing, dashes), SHAPE (uniform bullet lengths, repeated openers, -ing riders, triads, too few or too many numbers), and SOFT (context-dependent words). It also merges hits from unslop's scanner when installed.
-2. **Humanizer pass.** Read `~/.claude/skills/humanizer/SKILL.md` and apply it in embedded mode (return only final text) to the summary, each bullet, and the whole letter. Its §1-§8 (staging, contrasts, closers, triads, dashes) and §12-§18 (AI vocabulary, inflation, -ing riders, sales language) apply directly.
-3. **Unslop check.** Read `~/.claude/skills/unslop/references/core-contract.md` and follow its rewrite contract: edit only confirmed defects, preserve every fact, number, name, and date, and add no claims. For cover letters with voice samples available, unslop's `mimic` flow (`~/.claude/skills/unslop/references/commands/mimic.md`) can be used to match the user's voice.
+1. **Lint.** `python3 "$SKILL_DIR/scripts/lint.py" <file> [--type cover]`. Resolve `SKILL_DIR` as described in the main skill. It flags HARD (stock AI resume vocabulary, chatbot phrasing, dashes), SHAPE (uniform bullet lengths, repeated openers, -ing riders, triads, too few or too many numbers), and SOFT (context-dependent words). It also merges hits from unslop's scanner when installed.
+2. **Humanizer pass.** If installed, locate `humanizer` through the agent's skill catalog or beside this skill, read its `SKILL.md`, and apply it in embedded mode (return only final text) to the summary, each bullet, and the whole letter. Its §1-§8 (staging, contrasts, closers, triads, dashes) and §12-§18 (AI vocabulary, inflation, -ing riders, sales language) apply directly.
+3. **Unslop check.** If installed, locate `unslop` the same way, read its `references/core-contract.md`, and follow its rewrite contract: edit only confirmed defects, preserve every fact, number, name, and date, and add no claims. For cover letters with voice samples available, its `references/commands/mimic.md` flow can be used to match the user's voice.
 4. **Re-lint** until 0 HARD. Every remaining SHAPE/SOFT item gets a decision: fix it, or keep it because it is accurate in context (e.g. "robust" describing a statistical method, "orchestration" meaning Kubernetes).
 5. **Fact diff.** Compare the final text to the profile and `gaps.md`: no number, tool, title, team size, or outcome appears that the user didn't give you. Remove anything that crept in.
 6. **Read-aloud test.** Read the summary and the letter as if you were the user saying it to a peer. If they wouldn't say it out loud, rewrite it.
 
 If either skill is not installed, apply this file's rules and lint.py alone, and tell the user once.
+
+The linter looks for unslop beside this skill first, then in standard project skill folders above the source file, then in personal skill folders (`~/.agents/skills`, `~/.codex/skills` or `$CODEX_HOME/skills`, `~/.bob/skills`, `~/.claude/skills`, `~/.copilot/skills`, `~/.gemini/skills`, and `~/.config/opencode/skills`). It runs only the first scanner found, so shared installations do not duplicate hits.
 
 ## Resume-genre exceptions
 

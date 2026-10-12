@@ -1,8 +1,6 @@
 ---
 name: tech-resume
 description: Write tailored tech resumes and cover letters aimed at engineering hiring managers, built to parse cleanly in ATS and AI screeners (Greenhouse, Lever, Ashby, Workday) and to read as written by a person, not AI. Interviews the user to build a reusable career profile, asks targeted gap questions per job description, then produces DOCX + PDF. Use when the user wants a resume or cover letter for a job, wants to tailor to a JD, improve or review a resume, build a career/brag profile, or change their target level.
-user-invocable: true
-argument-hint: "[init <resume.pdf|docx> | base [new <file>|show <name>] | profile | target [level] | apply <JD> | resume <JD> | cover <JD> | review <file> [JD]]"
 metadata:
   version: "1.0.0"
 ---
@@ -16,6 +14,14 @@ Three rules override everything else in this skill:
 1. **Never invent facts.** Every number, scope, title, date, tool, and outcome must come from the user or their documents. If a bullet needs a number you don't have, ask. If the user doesn't know, use an honest range they confirm ("~40%", "8-10 teams") or a non-numeric result. Do not add a JD skill the user hasn't confirmed they have.
 2. **No hidden or deceptive content.** No white text, tiny fonts, off-page text, zero-width characters, or prompt-injection text. Screeners now detect these and recruiters treat them as fraud.
 3. **Write like the person.** Run the human-voice pass ([references/human-voice.md](references/human-voice.md)) on every resume and letter before building files. This is where the humanizer and unslop skills are applied.
+
+## Agent compatibility
+
+Use this same skill with Claude Code, Codex, IBM Bob, GitHub Copilot, Gemini CLI, or OpenCode. Installation locations and invocation examples are in [README.md](README.md).
+
+Resolve `SKILL_DIR` to the absolute directory containing this loaded `SKILL.md`; set it in the shell before running the commands below. Scripts, references, and templates are relative to that directory. Keep the current directory set to the user's career workspace so generated files go there. Do not assume the skill is installed under `~/.claude`.
+
+Use the agent's available question tool or a plain-text question for the choices below. For image-only PDFs, use an available PDF or image viewer; if none is available, ask for a text export. Optional humanizer and unslop skills improve the writing pass but are not required.
 
 ## Workspace
 
@@ -39,7 +45,7 @@ Workspace = current directory if `profile/career-profile.md` exists there; other
 
 | Invocation | Do |
 |---|---|
-| `/tech-resume` (no args) | If no profile: explain the flow, ask whether they have an existing resume or LinkedIn PDF to start from (`init`), otherwise start `profile`. If profile exists: show target level, profile completeness (roles with < 2 quantified facts), recent applications; ask what's next. |
+| `tech-resume` (no args; agent-specific invocation) | If no profile: explain the flow, ask whether they have an existing resume or LinkedIn PDF to start from (`init`), otherwise start `profile`. If profile exists: show target level, profile completeness (roles with < 2 quantified facts), recent applications; ask what's next. |
 | `init <file...>` | Seed a new profile from existing resumes (PDF, DOCX, TXT, MD) and/or a LinkedIn PDF export. See "init" below. |
 | `profile` | Build or extend the master profile. Read [references/interview.md](references/interview.md). |
 | `base` | List base resumes from `profile/bases/bases.md`. `base new <file>` seeds another base from a resume file (see "Base resumes"). `base show <name>` builds and shows that base's PDF. |
@@ -57,14 +63,14 @@ The profile frontmatter can hold `writing_rules`: standing instructions from the
 
 ## Target level
 
-The target level is stored in the profile frontmatter (`target_levels`, `target_roles`). If it's empty when any writing command runs, ask before writing (AskUserQuestion, multi-select): Senior IC, Staff/Principal IC, Engineering Manager, Director, VP/Head of Engineering/CTO, Architect/Platform/DevOps/SRE, plus "other". Also ask the target role titles they want to be seen as. A JD that clearly sits at a different level than the target: point it out and ask which level to write for this application (don't silently change the stored target).
+The target level is stored in the profile frontmatter (`target_levels`, `target_roles`). If it's empty when any writing command runs, ask before writing (allow multiple selections): Senior IC, Staff/Principal IC, Engineering Manager, Director, VP/Head of Engineering/CTO, Architect/Platform/DevOps/SRE, plus "other". Also ask the target role titles they want to be seen as. A JD that clearly sits at a different level than the target: point it out and ask which level to write for this application (don't silently change the stored target).
 
 ## `init` workflow
 
 Also runs when the user hands over a resume file with no other instruction, or when `profile` starts and `profile/sources/` has files not yet harvested.
 
 1. Create `profile/` and `profile/sources/` in the workspace if missing; copy each given file into `profile/sources/` (keep the original name).
-2. Extract text: `python3 ~/.claude/skills/tech-resume/scripts/extract.py profile/sources/<file> --out profile/sources/<file>.txt`. It flattens DOCX tables, recovers Word header/footer and text-box content, fixes ligatures, and warns on image-only or multi-column PDFs. For an image-only PDF, read the PDF visually with the Read tool instead. For `.doc`, ask for DOCX/PDF.
+2. Extract text: `python3 "$SKILL_DIR/scripts/extract.py" "profile/sources/<file>" --out "profile/sources/<file>.txt"`. It flattens DOCX tables, recovers Word header/footer and text-box content, fixes ligatures, and warns on image-only or multi-column PDFs. For an image-only PDF, read it visually with an available viewer. For `.doc`, ask for DOCX/PDF.
 3. Tell the user what the parse report says about their old file (header contact info, tables, columns, ligatures, missing text layer). Those same problems are likely costing them in ATS today, so this is useful feedback.
 4. Fill `profile/career-profile.md` from `templates/career-profile.md`: contact, every role with title/dates/company/location, each bullet split into facts tagged `(source: old resume; confidence: as written)`, education, certifications, skills (depth unknown until asked). Several sources (resume + LinkedIn) get merged; list conflicts in dates or titles under "Gaps or things to explain" and ask about them.
 5. Ask for target level and roles if they're unset (see "Target level").
@@ -80,17 +86,17 @@ A base is a cleaned, generic resume the user can start applications from. Users 
 
 ## `apply` / `resume` workflow
 
-0. **Pick a base.** If `profile/bases/bases.md` lists more than one base, ask which to use (AskUserQuestion, one option per base, with its current role and source in the description). Record the choice in `report.md`.
+0. **Pick a base.** If `profile/bases/bases.md` lists more than one base, ask which to use (one option per base, with its current role and source in the description). Record the choice in `report.md`.
 1. **Load.** Read the chosen base, the profile, and [references/resume-rules.md](references/resume-rules.md) and [references/levels.md](references/levels.md) (current level only). Create the application folder; save the JD to `jd.md`.
 2. **Analyze the JD.** Extract: exact role title; level signals; must-haves vs nice-to-haves; the 3-5 problems this hire is meant to solve (read between the lines: team stage, scale, what's broken); exact keyword spellings including acronym forms. Write `keywords.txt` in the format `scripts/verify.py` documents (`must:` / `nice:`, alternates after `|`). Use the JD's spelling as the first term.
 3. **Map evidence.** For each must-have, find profile facts that prove it. Classify: strong (quantified, recent), weak (mentioned, no scale/result), missing.
-4. **Gap questions.** Ask only about weak and missing items plus anything the cover letter needs (why this company, referral, a concrete detail about their product). 3-8 questions, batched in one or two AskUserQuestion rounds or one plain-text list, never one long interrogation. Use the JD-gap bank in [references/interview.md](references/interview.md). Always include: "Anything in this JD you can't honestly claim, so we leave it out?" Save Q&A to `gaps.md` and fold new facts back into the profile (ask once per session whether to do that automatically).
+4. **Gap questions.** Ask only about weak and missing items plus anything the cover letter needs (why this company, referral, a concrete detail about their product). 3-8 questions, batched in one or two question-tool rounds or one plain-text list, never one long interrogation. Use the JD-gap bank in [references/interview.md](references/interview.md). Always include: "Anything in this JD you can't honestly claim, so we leave it out?" Save Q&A to `gaps.md` and fold new facts back into the profile (ask once per session whether to do that automatically).
 5. **Draft `resume.md`** starting from the chosen base, following the rules: summary of 3-4 sentences at the top tuned to the JD, reverse-chronological experience, education, skills at the bottom matched to the JD. Select and reorder facts for this JD; don't paste the whole profile.
 6. **Human-voice pass.** Follow [references/human-voice.md](references/human-voice.md): `scripts/lint.py`, then the humanizer and unslop passes, then lint again until 0 HARD.
 7. **Build and verify.**
    ```bash
-   python3 ~/.claude/skills/tech-resume/scripts/build.py resume.md --out-dir . --basename First-Last-Resume-Company
-   python3 ~/.claude/skills/tech-resume/scripts/verify.py --source resume.md --pdf First-Last-Resume-Company.pdf --docx First-Last-Resume-Company.docx --keywords keywords.txt --max-pages 2
+   python3 "$SKILL_DIR/scripts/build.py" resume.md --out-dir . --basename First-Last-Resume-Company
+   python3 "$SKILL_DIR/scripts/verify.py" --source resume.md --pdf First-Last-Resume-Company.pdf --docx First-Last-Resume-Company.docx --keywords keywords.txt --max-pages 2
    ```
    Fix every FAIL. For WARNs: missing must-haves either get evidence (ask the user) or are left out deliberately and noted; "only in Skills" terms get a supporting bullet if the user has the experience. Page count over the level's limit: cut the oldest and weakest bullets first. Render page 1 to PNG (`pdftoppm -png -r 70 -f 1 -l 1`) and look at it once.
 8. **Report.** Write `report.md` and tell the user: files made, must-have coverage, what was left out on purpose and why, remaining WARNs, and the 2-3 facts that would most improve this resume if they can find them.
@@ -100,8 +106,8 @@ A base is a cleaned, generic resume the user can start applications from. Users 
 Read [references/cover-letter.md](references/cover-letter.md). Uses the same JD analysis, `gaps.md`, and the user's voice samples. Draft `cover-letter.md` from `templates/cover-letter.md`, run the human-voice pass with `--type cover`, then:
 
 ```bash
-python3 ~/.claude/skills/tech-resume/scripts/build.py cover-letter.md --type cover --out-dir . --basename First-Last-Cover-Letter-Company
-python3 ~/.claude/skills/tech-resume/scripts/verify.py --type cover --source cover-letter.md --pdf First-Last-Cover-Letter-Company.pdf --docx First-Last-Cover-Letter-Company.docx
+python3 "$SKILL_DIR/scripts/build.py" cover-letter.md --type cover --out-dir . --basename First-Last-Cover-Letter-Company
+python3 "$SKILL_DIR/scripts/verify.py" --type cover --source cover-letter.md --pdf First-Last-Cover-Letter-Company.pdf --docx First-Last-Cover-Letter-Company.docx
 ```
 
 Also give the letter as plain text in the reply, since many portals take it in a text box and direct-to-hiring-manager emails go in the email body.

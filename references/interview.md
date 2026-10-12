@@ -5,7 +5,7 @@ The best resume tools interview first and write second. Generators that skip the
 ## Ground rules
 
 - **Harvest before asking.** Read everything in `profile/sources/` first (old resumes, LinkedIn PDF export, brag docs, perf reviews, promo packets, design docs). Pre-fill the profile and only ask about what's missing or vague. Never ask for something a document already answers.
-- **Batch questions.** One role at a time, 3-6 questions per round. Use AskUserQuestion when the answer is a choice (team size bands, level, yes/no); use a plain numbered list when answers are free text. Tell the user they can answer roughly, skip, or say "don't know".
+- **Batch questions.** One role at a time, 3-6 questions per round. Use the agent's question tool, if available, when the answer is a choice (team size bands, level, yes/no); use a plain numbered list when answers are free text. Tell the user they can answer roughly, skip, or say "don't know".
 - **Follow the thread.** When an answer mentions something bigger than the question ("we also had to rebuild the on-call rotation after that"), ask about it. Those side stories are often the best bullets.
 - **Get honest numbers.** If they don't know an exact figure, ask for a range, a ratio, or a before/after they're confident about, and how they know it (dashboard, postmortem, OKR review, finance report). Record the confidence in the profile.
 - **Non-numeric results count.** A passed audit, a customer kept, a team that stopped paging at 3am, a standard others adopted, a promotion of someone you mentored.
