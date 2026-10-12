@@ -1,6 +1,6 @@
 # Target levels
 
-Stored in the profile frontmatter as `target_levels` (one or more keys below) and `target_roles` (exact titles). `/tech-resume target` shows them; `/tech-resume target staff director` replaces them; with no level given, ask with AskUserQuestion (multi-select). When the user has two targets (e.g. Staff IC and Eng Manager), each application uses the level that matches its JD, and the summary and bullet ordering change accordingly.
+Stored in the profile frontmatter as `target_levels` (one or more keys below) and `target_roles` (exact titles). The `target` operation shows them; `target staff director` replaces them (see the README for agent-specific invocation). With no level given, ask using the agent's question tool or plain text, allowing multiple selections. When the user has two targets (e.g. Staff IC and Eng Manager), each application uses the level that matches its JD, and the summary and bullet ordering change accordingly.
 
 | Key | Pages | Summary leads with | Bullets lead with |
 |---|---|---|---|

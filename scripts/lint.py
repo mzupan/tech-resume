@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import statistics
 import subprocess
@@ -266,9 +267,27 @@ def scan_rules(text: str, rules: set[str], out: list):
                             "context": line.strip()[:110]})
 
 
+def find_unslop_scanner(path: Path) -> Path | None:
+    """Find one optional scanner across shared and agent-specific skill folders."""
+    roots = [Path(__file__).resolve().parents[2]]
+    project_dirs = (".agents", ".bob", ".claude", ".github", ".gemini", ".opencode")
+    for parent in path.resolve().parents:
+        roots.extend(parent / agent / "skills" for agent in project_dirs)
+    roots.append(Path.home() / ".agents/skills")
+    codex_home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex").expanduser()
+    roots.append(codex_home / "skills")
+    roots.extend(Path.home() / agent / "skills"
+                 for agent in (".bob", ".claude", ".copilot", ".gemini", ".config/opencode"))
+    for root in roots:
+        scanner = root / "unslop/scripts/banned_phrase_scan.py"
+        if scanner.is_file():
+            return scanner
+    return None
+
+
 def unslop_hits(path: Path) -> list:
-    scanner = Path.home() / ".claude/skills/unslop/scripts/banned_phrase_scan.py"
-    if not scanner.exists():
+    scanner = find_unslop_scanner(path)
+    if scanner is None:
         return []
     try:
         r = subprocess.run([sys.executable, "-I", str(scanner), str(path)], capture_output=True, text=True, timeout=60)
