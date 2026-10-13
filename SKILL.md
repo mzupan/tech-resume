@@ -91,14 +91,14 @@ A base is a cleaned, generic resume the user can start applications from. Users 
 2. **Analyze the JD.** Extract: exact role title; level signals; must-haves vs nice-to-haves; the 3-5 problems this hire is meant to solve (read between the lines: team stage, scale, what's broken); exact keyword spellings including acronym forms. Write `keywords.txt` in the format `scripts/verify.py` documents (`must:` / `nice:`, alternates after `|`). Use the JD's spelling as the first term.
 3. **Map evidence.** For each must-have, find profile facts that prove it. Classify: strong (quantified, recent), weak (mentioned, no scale/result), missing.
 4. **Gap questions.** Ask only about weak and missing items plus anything the cover letter needs (why this company, referral, a concrete detail about their product). 3-8 questions, batched in one or two question-tool rounds or one plain-text list, never one long interrogation. Use the JD-gap bank in [references/interview.md](references/interview.md). Always include: "Anything in this JD you can't honestly claim, so we leave it out?" Save Q&A to `gaps.md` and fold new facts back into the profile (ask once per session whether to do that automatically).
-5. **Draft `resume.md`** starting from the chosen base, following the rules: summary of 3-4 sentences at the top tuned to the JD, reverse-chronological experience, education, skills at the bottom matched to the JD. Select and reorder facts for this JD; don't paste the whole profile.
+5. **Draft `resume.md`** starting from the chosen base, following the rules: summary of 3-4 sentences at the top tuned to the JD, reverse-chronological experience, education, skills at the bottom matched to the JD. Select and reorder facts for this JD; don't paste the whole profile. Stay inside the length budget in [references/resume-rules.md](references/resume-rules.md): 475-750 words, 3-5 bullets for each of the two most recent roles and 1-3 for older ones, strongest bullet first, result or metric in the first 5-8 words. Add the one-line company context for lesser-known employers and an optional `- Stack:` line for the two most recent roles.
 6. **Human-voice pass.** Follow [references/human-voice.md](references/human-voice.md): `scripts/lint.py`, then the humanizer and unslop passes, then lint again until 0 HARD.
 7. **Build and verify.**
    ```bash
    python3 "$SKILL_DIR/scripts/build.py" resume.md --out-dir . --basename First-Last-Resume-Company
    python3 "$SKILL_DIR/scripts/verify.py" --source resume.md --pdf First-Last-Resume-Company.pdf --docx First-Last-Resume-Company.docx --keywords keywords.txt --max-pages 2
    ```
-   Fix every FAIL. For WARNs: missing must-haves either get evidence (ask the user) or are left out deliberately and noted; "only in Skills" terms get a supporting bullet if the user has the experience. Page count over the level's limit: cut the oldest and weakest bullets first. Render page 1 to PNG (`pdftoppm -png -r 70 -f 1 -l 1`) and look at it once.
+   Fix every FAIL. For WARNs: missing must-haves either get evidence (ask the user) or are left out deliberately and noted; "only in Skills" terms get a supporting bullet or go on the role's `Stack:` line if the user has the experience. Page count or word count over budget: cut the oldest and weakest bullets first. Render page 1 to PNG (`pdftoppm -png -r 70 -f 1 -l 1`) and look at it once.
 8. **Report.** Write `report.md` and tell the user: files made, must-have coverage, what was left out on purpose and why, remaining WARNs, and the 2-3 facts that would most improve this resume if they can find them.
 
 ## `cover` workflow
@@ -118,8 +118,8 @@ Also give the letter as plain text in the reply, since many portals take it in a
 |---|---|
 | `scripts/extract.py` | Existing resume (PDF/DOCX/TXT/MD) to plain text plus a parse report (contact found, dates, header/table/column/ligature/image-only warnings). |
 | `scripts/build.py` | Markdown source to DOCX + PDF. Single column, embedded Arial, no ligatures, contact info in body, dates right-aligned by tab stop. `--font Arial\|Georgia\|Calibri`, `--size 10-11.5`. |
-| `scripts/verify.py` | Parse test: text layer, name first, email/phone, header/footer, hidden text, odd unicode, headings, date format, fonts, size, page count, keyword coverage by section. Exit 1 on FAIL. |
-| `scripts/lint.py` | AI-tell and generic-writing scanner for resumes and letters; merges unslop's scanner hits. Exit 1 on any HARD. |
+| `scripts/verify.py` | Parse test: text layer, name first, email/phone, header/footer, hidden text, odd unicode, headings, date format, fonts, size, page count, word budget, keyword coverage by section. Exit 1 on FAIL. |
+| `scripts/lint.py` | AI-tell and generic-writing scanner for resumes and letters, plus resume shape: bullets per role, word budget, pronouns in bullets, context-clause openers, overused team words. Merges unslop's scanner hits. Exit 1 on any HARD. |
 
 Requires `python-docx`, `reportlab`, `pypdf`; `pdftotext`/`pdftoppm` (poppler) recommended. If a dependency is missing, tell the user the install command (`pip install python-docx reportlab pypdf`, `brew install poppler`) rather than switching to a different generator.
 

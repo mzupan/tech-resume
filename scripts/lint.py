@@ -123,6 +123,12 @@ RIDERS = re.compile(r",\s+(ensuring|enabling|fostering|driving|resulting in|show
 DASHES = re.compile(r"—|–| -- |(?<=\w)--(?=\w)")
 CURLY = re.compile("[‘’“”]")
 TRIAD = re.compile(r"\b\w+(?: \w+)?, \w+(?: \w+)?,? and \w+(?: \w+)?\b")
+STACK = re.compile(r"^Stack:\s", re.I)
+PRONOUN = re.compile(r"(?<![\w/-])(I|[Mm]e|[Mm]y|[Ww]e|[Oo]ur|us)(?![\w/-])")
+CONTEXT_OPENER = re.compile(r"^(As part of|In order to|Working (with|on)|Tasked with|While|During|Through|With the|In my role)\b", re.I)
+TEAM_WORDS = re.compile(r"\b(collaborat\w*|assist\w*|support(?:ed|ing)|helped|participat\w*)\b", re.I)
+WORDS_MIN, WORDS_MAX = 475, 750
+RECENT_MAX, OLDER_MAX = 5, 3
 
 
 def scrub(text: str) -> str:
@@ -153,13 +159,47 @@ def bullets_of(text: str) -> list[tuple[int, str, str]]:
         if line.startswith("## "):
             sec = line[3:].strip().lower()
         m = re.match(r"^\s*[-*]\s+(.*)", line)
-        if m and "skill" not in sec and "certif" not in sec:
+        if m and "skill" not in sec and "certif" not in sec and not STACK.match(m.group(1)):
             out.append((n, sec, m.group(1).strip()))
     return out
 
 
+def roles_of(text: str) -> list[tuple[int, str, int]]:
+    """(line, role header, bullet count without Stack lines) for each ### entry under Experience."""
+    roles, sec = [], ""
+    for n, line in lines_with_numbers(text):
+        if line.startswith("## "):
+            sec = line[3:].strip().lower()
+            continue
+        if "experience" not in sec:
+            continue
+        if line.startswith("### "):
+            roles.append([n, line[4:].split("|")[0].strip(), 0])
+            continue
+        m = re.match(r"^\s*[-*]\s+(.*)", line)
+        if m and roles and not STACK.match(m.group(1)):
+            roles[-1][2] += 1
+    return [tuple(r) for r in roles]
+
+
+def resume_words(text: str) -> int:
+    body = [l for l in text.splitlines() if l.strip() and not l.startswith("<!--")]
+    return len(re.sub(r"[#|*`]", " ", "\n".join(body)).split())
+
+
 def shape_resume(text: str, out: list):
     bl = bullets_of(text)
+    for n, _, b in bl:
+        if PRONOUN.search(b):
+            out.append({"level": "HARD", "line": n, "match": PRONOUN.search(b).group(0),
+                        "fix": "no pronouns in bullets; start with the verb or the result", "context": b[:110]})
+        if CONTEXT_OPENER.match(b):
+            out.append({"level": "SHAPE", "line": n, "match": "context-clause opener",
+                        "fix": "front-load: put the result or metric in the first 5-8 words", "context": b[:110]})
+    team = sum(len(TEAM_WORDS.findall(b)) for _, _, b in bl)
+    if team >= 3:
+        out.append({"level": "SHAPE", "line": 0, "match": f"team/assist words used {team} times",
+                    "fix": "keep where accurate; otherwise say what you owned", "context": ""})
     if len(bl) >= 6:
         lens = [len(b.split()) for _, _, b in bl]
         sd = statistics.pstdev(lens)
@@ -191,6 +231,18 @@ def shape_resume(text: str, out: list):
             out.append({"level": "SHAPE", "line": 0, "match": f"{triads} bullets use an 'X, Y, and Z' list",
                         "fix": "rule-of-three habit; keep lists only where there really are three things",
                         "context": ""})
+    for i, (n, role, count) in enumerate(roles_of(text)):
+        cap = RECENT_MAX if i < 2 else OLDER_MAX
+        if count > cap:
+            out.append({"level": "SHAPE", "line": n, "match": f"{count} bullets in '{role}'",
+                        "fix": f"budget is {cap} for {'one of the two most recent roles' if i < 2 else 'an older role'}; keep the strongest for this JD",
+                        "context": ""})
+    words = resume_words(text)
+    if words > WORDS_MAX or words < WORDS_MIN:
+        out.append({"level": "SHAPE", "line": 0, "match": f"~{words} words",
+                    "fix": f"budget is {WORDS_MIN}-{WORDS_MAX}; cut the weakest and oldest bullets first" if words > WORDS_MAX
+                    else f"budget is {WORDS_MIN}-{WORDS_MAX}; add the strongest missing results",
+                    "context": ""})
     m = re.search(r"^## (?:Professional )?Summary\s*\n(.+?)(?=^## |\Z)", text, re.M | re.S)
     if m:
         s = " ".join(m.group(1).split())

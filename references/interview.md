@@ -16,7 +16,7 @@ The best resume tools interview first and write second. Generators that skip the
 
 1. **Basics.** Name, city/state (or "Remote, US"), email, phone, LinkedIn, GitHub/portfolio, work authorization or clearance if relevant, willingness to relocate.
 2. **Target.** Levels and role titles (see `levels.md`), company stage/size preferences, domains they want or want to avoid. Stored in frontmatter; changeable with `/tech-resume target`.
-3. **Roles, newest first.** For each: title(s) with dates (month + year, including promotions), company, location, one-line company context (what it does, size/stage), team/org size, what they owned. Then the question bank below, focused on the 3-6 things that mattered most in that role. Spend most time on the last 2-3 roles; compress anything older than ~10-12 years.
+3. **Roles, newest first.** For each: title(s) with dates (month + year, including promotions), company, location, one-line company context (what it does, plus one size or stage fact such as funding stage, revenue, customers, or headcount; the resume prints it for companies a hiring manager may not know), team/org size, what they owned. Then the question bank below, focused on the 3-6 things that mattered most in that role. Spend most time on the last 2-3 roles; compress anything older than ~10-12 years.
 4. **Projects, OSS, talks, writing, patents** if they support the target.
 5. **Education and certifications.**
 6. **Skills inventory.** For each technology: years, last used, depth (production owner / used regularly / familiar). Only "production owner" and "used regularly" go on a resume.
@@ -32,6 +32,8 @@ Pick from these; don't ask all of them.
 - What was the baseline, and how do you know? (dashboard, postmortem, OKR review)
 - How many users, requests per second, data volume, services, or teams depended on it?
 - If you don't have an exact number, what's an honest range or ratio?
+- You have a percentage: what is it in dollars per month or year, saved or earned? (the bill, a finance report, or count x unit price)
+- No number at all? How fast was it (weeks, ahead of a deadline)? Did it win an award or a customer, or unblock another team's project?
 - What would have happened if you hadn't done it? (risk avoided, deadline met, compliance, customer kept)
 - Did anything show it worked months after launch?
 
@@ -70,6 +72,8 @@ Ask only for must-haves that are weak or missing in the profile, plus the cover-
 - The JD stresses [X]. Where have you done X, even partly, in a side project, or under a different name?
 - They use [tool/domain]; you list [adjacent one]. How close was your work, and how fast did you ramp up last time?
 - This level implies [scope]. What's your largest example of that scope?
+- Your strongest percentage result for this JD: what is it worth in dollars?
+- Is the company context line missing for any employer on this resume? (what it does, one size or stage fact)
 - Why this company and role specifically? Anything concrete from their product, engineering blog, talks, or stack?
 - Any referral, mutual connection, or earlier contact with the hiring manager?
 - Is there anything in this JD you can't honestly claim, so we leave it out instead of stretching it?

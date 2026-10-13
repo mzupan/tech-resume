@@ -11,6 +11,7 @@ Checks (each prints PASS/WARN/FAIL):
   - no ligature glyphs, smart quotes, em/en dashes, zero-width or odd unicode
   - consistent date format on role lines
   - fonts embedded, file size < 2.5 MB, page count within limit
+  - resume word count within budget (default 475-750; --min-words / --max-words)
   - keyword coverage by section (with --keywords)
 
 Keyword file: one term per line, "must:" or "nice:" prefix, alternates after "|".
@@ -249,6 +250,8 @@ def main():
     ap.add_argument("--docx", type=Path)
     ap.add_argument("--keywords", type=Path)
     ap.add_argument("--max-pages", type=int, default=None)
+    ap.add_argument("--min-words", type=int, default=475)
+    ap.add_argument("--max-words", type=int, default=750)
     a = ap.parse_args()
     max_pages = a.max_pages or (1 if a.type == "cover" else 2)
 
@@ -267,6 +270,13 @@ def main():
         t = check_docx(a.docx)
         check_text("DOCX", t, a.type)
         extracted.append(("DOCX", t))
+    if a.type == "resume" and extracted:
+        words = len(extracted[0][1].split())
+        ok = a.min_words <= words <= a.max_words
+        report("PASS" if ok else "WARN",
+               f"resume length {words} words (budget {a.min_words}-{a.max_words})" if ok else
+               f"resume length {words} words, outside {a.min_words}-{a.max_words}: "
+               + ("cut the weakest and oldest bullets" if words > a.max_words else "add the strongest missing results"))
     if a.keywords and a.type == "resume":
         check_keywords(a.keywords, md, extracted)
 

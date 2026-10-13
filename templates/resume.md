@@ -6,6 +6,9 @@ Resume source for scripts/build.py. Rules:
 - "### Title | Company | Location | Mon YYYY - Mon YYYY" for each role. Use "Present". Use a plain
   hyphen with spaces between dates. Promotions at one company: one ### line per title.
 - Bullets start with "- ". No bold, no links, no emojis, no tables. Comments like this one are stripped.
+- Optional company context line: one plain line right under the ### line, for employers a hiring manager may not know.
+- Optional "- Stack: ..." as the last bullet of the two most recent roles. Doesn't count toward the bullet budget.
+- Budget: 475-750 words total; 3-5 bullets for each of the two most recent roles, 1-3 for older ones.
 - Skills rows: "- Label: item, item, item".
 -->
 # First Last
@@ -16,8 +19,10 @@ Sentence one names the level and specialty using the JD's own title words. Sente
 
 ## Experience
 ### Senior Software Engineer | Company | City, ST | Jan 2022 - Present
-- Bullet: what you did, to what, at what scale, with what result.
+Payments API platform for 2,000 merchants; Series C
+- Bullet: result or metric in the first 5-8 words, then what you did, to what, at what scale.
 - Bullet.
+- Stack: Go, Kubernetes, PostgreSQL, Terraform
 
 ### Software Engineer | Earlier Company | Remote | Jun 2018 - Dec 2021
 - Bullet.

@@ -152,6 +152,12 @@ def parse(path: Path, kind: str) -> Doc:
     return doc
 
 
+def stack_label(b: str) -> tuple[str, str]:
+    """'Stack: Go, Kubernetes' role bullet -> ('Stack', 'Go, Kubernetes'); other bullets unchanged."""
+    m = re.match(r"^(Stack):\s+(.*)$", b)
+    return (m.group(1), m.group(2)) if m else ("", b)
+
+
 def split_label(b: str) -> tuple[str, str]:
     """'Languages: Go, Rust' -> ('Languages', 'Go, Rust') for skill rows."""
     m = re.match(r"^([A-Za-z0-9 &/+\-]{2,40}):\s+(.*)$", b)
@@ -256,7 +262,8 @@ def build_docx(doc: Doc, out: Path, kind: str, font: str, size: float, date_line
                 for t in e.text:
                     para(t, after=2)
                 for b in e.bullets:
-                    bullet(b)
+                    lab, val = stack_label(b)
+                    bullet(val, label=lab)
 
     cp = d.core_properties
     cp.author = doc.name
@@ -393,7 +400,9 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
                 for t in e.text:
                     story.append(Paragraph(escape(t), body_st))
                 for b in e.bullets:
-                    story.append(Paragraph(escape(b), bullet_st, bulletText="•"))
+                    lab, val = stack_label(b)
+                    txt = (f"<b>{escape(lab)}:</b> " if lab else "") + escape(val)
+                    story.append(Paragraph(txt, bullet_st, bulletText="•"))
 
     title = f"{doc.name} - {'Cover Letter' if kind == 'cover' else 'Resume'}"
     pdf = SimpleDocTemplate(

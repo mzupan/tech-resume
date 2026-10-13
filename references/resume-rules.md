@@ -13,6 +13,7 @@ Two readers, in this order: software (ATS parser, then often an LLM screener tha
 - Promotions at one company: one `###` line per title, each with its own dates, so title progression is visible.
 - Contact line: City, ST | email | phone | linkedin.com/in/x | github.com/x. No full street address. Drop "https://" and "www".
 - Length: 1 page under ~5 years of experience; 2 pages for senior and up (forcing a staff/director resume onto one page reads as under-leveled). Never 3.
+- Word budget: 475-750 words of resume text. About 600 is the sweet spot for one page and ~700 for a senior two-page resume; past that, readers skim past the best material. `verify.py` warns outside the range.
 - Files: DOCX (most reliable for Workday/iCIMS) and PDF (for Greenhouse/Lever/Ashby and email). Both under 2.5 MB. File name `First-Last-Resume-Company.pdf`.
 - Plain ASCII punctuation: straight quotes, no em/en dashes, no ellipsis character. The em dash is also a measured AI tell in resumes (Simplify data: 0.1% of resumes in 2024, 2.7% in 2026).
 
@@ -44,10 +45,14 @@ The pattern is what you did, to what, at what scale, with what result. Google's 
 - Give scale (rps, users, data size, services, teams, headcount, budget) and a result with a baseline where possible ("p99 from 900ms to 180ms", not "improved latency").
 - Show ownership honestly. "Led" means they led. "Co-designed" is fine and more credible than an inflated claim.
 - Vary length: 8 to about 28 words. A simple fact gets a short bullet.
-- 3-6 bullets for recent roles, 1-3 for roles older than ~10 years, title line only beyond ~15 years (or an "Earlier experience" line).
+- Bullet budget: 3-5 for each of the two most recent roles, 1-3 for older roles, title line only beyond ~15 years (or an "Earlier experience" line). Start from the three best accomplishments in each role and add only what this JD needs. `lint.py` warns past the budget.
+- Front-load every bullet. Eye-tracking shows recruiters read the first 5-8 words of a bullet in an F-shaped scan and decide there whether to keep reading. Those words carry the accomplishment with its context, or the metric itself ("Cut GPU spend ~45% by..."). Don't open with a context clause (As part of, In order to, Working with).
+- Prefer money when the user has it: a percentage plus what it saved or earned ("cut GPU spend ~45%, about $X a month"). With no number at all, use another objective signal: speed (shipped in 6 weeks), awards, customers won, or a project it unblocked.
 - Not every bullet needs a number. Roughly half to three quarters with a number is natural; a number in every line looks manufactured.
 - No duty bullets ("Responsible for...", "Worked on..."). No -ing riders tacked on for weight (", ensuring...", ", resulting in...", ", fostering..."): make the result its own clause.
-- Order bullets within a role by relevance to this JD, not by date.
+- No pronouns in bullets (I, me, my, we, our). Team words (collaborated, assisted, supported, helped) are fine once or twice where they're accurate; past that, say what the user owned.
+- Order bullets within a role by relevance to this JD, not by date. The strongest bullet goes first: readers skip the last bullets of a role and barely read older roles.
+- Optional `- Stack: ...` as the last bullet of the two most recent roles: the main technologies used there, JD terms first. It puts skills in context for screeners, so they aren't only in the Skills list, and it doesn't count toward the bullet budget. Use it instead of repeating the same tools in every bullet.
 
 Before/after:
 
@@ -63,6 +68,10 @@ Before/after:
 - 10-25 items total. Each must be something the user can be interviewed on (profile depth "production owner" or "used regularly").
 - Put JD must-haves first in each row, using the JD's spelling. No duplicates across rows. No soft skills. No version numbers unless the JD asks.
 - Drop stale or trivial items (MS Office, Jira, "Agile") unless the JD names them.
+
+## Company context
+
+A hiring manager skimming the left edge looks for company names and titles first. A company they don't recognize gets one short line under the role header saying what it does, plus one size or stage fact from the profile: "AI security platform for enterprise prompt traffic; Series B". Skip the line for household names. Use only facts in the profile's `Context` field; if it's empty, ask or leave the line out.
 
 ## Selection and tailoring
 
