@@ -256,9 +256,12 @@ def build_docx(doc: Doc, out: Path, kind: str, font: str, size: float, date_line
                     bullet(b)
             for e in sec.entries:
                 title_line(e.title, e.dates)
-                sub = ", ".join(x for x in (e.org, e.location) if x)
-                if sub:
-                    para(sub, italic=False, after=2)
+                if e.org or e.location:
+                    p = para(after=2)
+                    if e.org:
+                        p.add_run(e.org).bold = True
+                    if e.location:
+                        p.add_run((", " if e.org else "") + e.location)
                 for t in e.text:
                     para(t, after=2)
                 for b in e.bullets:
@@ -374,6 +377,7 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
                     c.drawString(0, y - lead, self.right)
 
     story = [Paragraph(escape(doc.name), name_st), Paragraph(escape(doc.contact), contact_st)]
+    bullet_paras: list = []  # (source text, Paragraph) for the widow-line check
 
     if kind == "cover":
         story += [Spacer(1, 10), Paragraph(escape(date_line), letter_st), Spacer(1, 2)]
@@ -391,18 +395,23 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
                     txt = (f"<b>{escape(lab)}:</b> " if lab else "") + escape(val)
                     story.append(Paragraph(txt, ParagraphStyle("sk", parent=body_st, spaceAfter=1.5)))
                 else:
-                    story.append(Paragraph(escape(b), bullet_st, bulletText="•"))
+                    para_b = Paragraph(escape(b), bullet_st, bulletText="•")
+                    bullet_paras.append((b, para_b))
+                    story.append(para_b)
             for e in sec.entries:
                 story += [Spacer(1, 4), TitleLine(e.title, e.dates)]
-                sub = ", ".join(x for x in (e.org, e.location) if x)
-                if sub:
-                    story.append(Paragraph(escape(sub), body_st))
+                if e.org or e.location:
+                    sub = (f"<b>{escape(e.org)}</b>" if e.org else "") + \
+                          ((", " if e.org else "") + escape(e.location) if e.location else "")
+                    story.append(Paragraph(sub, body_st))
                 for t in e.text:
                     story.append(Paragraph(escape(t), body_st))
                 for b in e.bullets:
                     lab, val = stack_label(b)
                     txt = (f"<b>{escape(lab)}:</b> " if lab else "") + escape(val)
-                    story.append(Paragraph(txt, bullet_st, bulletText="•"))
+                    para_b = Paragraph(txt, bullet_st, bulletText="•")
+                    bullet_paras.append((b, para_b))
+                    story.append(para_b)
 
     title = f"{doc.name} - {'Cover Letter' if kind == 'cover' else 'Resume'}"
     pdf = SimpleDocTemplate(
@@ -418,6 +427,25 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
         creator="tech-resume skill",
     )
     pdf.build(story)
+    return widow_lines(bullet_paras, LETTER[0] - 1.4 * inch)
+
+
+def widow_lines(bullet_paras: list, width: float, max_words: int = 2) -> list[str]:
+    """Bullets whose last rendered line holds only 1-2 words (wasted line, looks sparse)."""
+    widows = []
+    for src, p in bullet_paras:
+        p.wrap(width, 10_000)
+        lines = getattr(p, "blPara", None) and p.blPara.lines
+        if not lines or len(lines) < 2:
+            continue
+        last = lines[-1]
+        if isinstance(last, tuple):
+            words = last[1]
+        else:
+            words = " ".join(getattr(f, "text", "") for f in getattr(last, "words", [])).split()
+        if 0 < len(words) <= max_words:
+            widows.append(f"{' '.join(words)!r} <- {src[:70]}")
+    return widows
 
 
 # ---------------------------------------------------------------- main
@@ -450,12 +478,16 @@ def main():
         p = out_dir / f"{base}.docx"
         build_docx(doc, p, a.type, a.font, a.size, date_line)
         made.append(p)
+    widows = []
     if "pdf" in a.formats:
         p = out_dir / f"{base}.pdf"
-        build_pdf(doc, p, a.type, a.font, a.size, date_line)
+        widows = build_pdf(doc, p, a.type, a.font, a.size, date_line) or []
         made.append(p)
     for p in made:
         print(p)
+    for w in widows:
+        print(f"WARN widow line (1-2 words alone on a bullet's last line; trim a few words or add a detail): {w}",
+              file=sys.stderr)
 
 
 if __name__ == "__main__":

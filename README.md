@@ -117,6 +117,7 @@ The skill drives these, but they also work on their own:
 | `scripts/build.py` | Markdown to ATS-safe DOCX and PDF |
 | `scripts/verify.py` | Parse test of the built files plus keyword coverage by section |
 | `scripts/lint.py` | Flags AI-sounding and generic writing in a resume or letter |
+| `scripts/keyword_trends.py` | Finds job-posting keywords that recur across your saved applications and checks a base resume against them |
 
 `references/research.md` lists the sources behind the formatting and writing rules.
 

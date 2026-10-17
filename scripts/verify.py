@@ -152,8 +152,8 @@ def check_source(src: Path, kind: str, keywords: Path | None, max_pages: int):
     report("PASS" if not nonstd else "WARN",
            "section headings standard" if not nonstd else f"non-standard headings (parsers may miss): {nonstd}")
     if heads:
-        report("PASS" if heads[0].lower() in ("summary", "professional summary") else "WARN",
-               f"first section is '{heads[0]}' (expected Summary)")
+        report("PASS" if heads[0].lower() in ("summary", "professional summary", "education") else "WARN",
+               f"first section is '{heads[0]}' (expected Summary, or Education for entry level)")
         report("PASS" if "skill" in heads[-1].lower() else "WARN", f"last section is '{heads[-1]}' (expected Skills)")
     m = re.search(r"^## (?:Professional )?Summary\s*\n(.+?)(?=^## )", text, re.M | re.S)
     if m:

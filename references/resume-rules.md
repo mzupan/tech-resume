@@ -8,7 +8,7 @@ Two readers, in this order: software (ATS parser, then often an LLM screener tha
 - Name and contact line as plain text at the top of the body. Never in a Word header or footer (Greenhouse, Workday and others drop header/footer content).
 - No tables, text boxes, columns, icons, photos, skill bars, charts, logos, or colored backgrounds. No emojis. Only plain bullets.
 - Section headings use standard names only: Summary, Experience, Projects, Education, Certifications, Skills (also accepted: Publications, Patents, Open Source, Speaking). Parsers and LLM screeners locate sections by these names.
-- Order: Summary, Experience, (Projects), Education, (Certifications), Skills. Skills goes at the bottom so the first screen is the summary and recent work.
+- Order: Summary, Experience, (Projects), Education, (Certifications), Skills. Skills goes at the bottom so the first screen is the summary and recent work. Entry level is the exception: Education (with one line of relevant coursework) first, then Experience or Projects, whichever is stronger (see levels.md `entry`).
 - Role line: `Title | Company | Location | Mon YYYY - Mon YYYY` (or `Present`). Plain hyphen with spaces. One format throughout. Month + year on every role, because Greenhouse and Workday compute years of experience from these dates.
 - Promotions at one company: one `###` line per title, each with its own dates, so title progression is visible.
 - Contact line: City, ST | email | phone | linkedin.com/in/x | github.com/x. No full street address. Drop "https://" and "www".
