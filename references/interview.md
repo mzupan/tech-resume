@@ -36,6 +36,7 @@ Pick from these; don't ask all of them.
 - No number at all? How fast was it (weeks, ahead of a deadline)? Did it win an award or a customer, or unblock another team's project?
 - What would have happened if you hadn't done it? (risk avoided, deadline met, compliance, customer kept)
 - Did anything show it worked months after launch?
+- How many users, customers, or teams did it affect, and what changed for them (faster, fewer errors, a task they no longer do by hand)?
 
 **Scope**
 - How many engineers, teams, or orgs did this touch? Budget or headcount?
@@ -58,6 +59,16 @@ Pick from these; don't ask all of them.
 - What alternatives did you reject and why? What did the tradeoff cost?
 - What was the hardest technical problem, and what was non-obvious about the fix?
 - What would you do differently now?
+
+**Visibility gap** (run on every existing bullet that names a strong company, title, or tool but no result)
+- What did you actually produce there? What existed after you left that didn't before?
+- "Worked on", "assisted with", "analyzing": what was the finished thing, and which part was yours?
+- Ask until there's a built thing and a number, or confirm the honest version really is a shared effort.
+
+**Entry level** (students, new grads, bootcamp grads)
+- Graduation month and year, GPA (used only if 3.5+), 3-5 courses that match the target role.
+- Each project: what it does in one line, the tools, one number (users, data size, latency, benchmark, tests), and whether anyone else used it.
+- Hackathons, TA or research roles, open-source contributions, clubs where you built something.
 
 **Brag-doc prompts** (useful when the user says "I don't know, I just did my job")
 - If you were convincing a friend to join that team, what would you say about your work there?

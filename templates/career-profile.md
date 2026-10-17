@@ -1,5 +1,5 @@
 ---
-target_levels: []          # senior | staff | principal | manager | director | vp | architect  (change: /tech-resume target)
+target_levels: []          # entry | senior | staff | principal | manager | director | vp | architect  (change: /tech-resume target)
 target_roles: []           # exact titles you want to be seen as, e.g. "Director of Platform Engineering"
 preferences:
   company_stage: []        # seed, series B-D, public, any

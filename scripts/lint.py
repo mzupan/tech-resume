@@ -126,6 +126,8 @@ TRIAD = re.compile(r"\b\w+(?: \w+)?, \w+(?: \w+)?,? and \w+(?: \w+)?\b")
 STACK = re.compile(r"^Stack:\s", re.I)
 PRONOUN = re.compile(r"(?<![\w/-])(I|[Mm]e|[Mm]y|[Ww]e|[Oo]ur|us)(?![\w/-])")
 CONTEXT_OPENER = re.compile(r"^(As part of|In order to|Working (with|on)|Tasked with|While|During|Through|With the|In my role)\b", re.I)
+BYSTANDER_OPENER = re.compile(r"^(Assisted|Helped|Participated|Supported|Contributed to|Involved in|Worked on|Responsible for)\b", re.I)
+ACTIVITY_OPENER = re.compile(r"^[A-Z][a-z]+ing\b")
 TEAM_WORDS = re.compile(r"\b(collaborat\w*|assist\w*|support(?:ed|ing)|helped|participat\w*)\b", re.I)
 WORDS_MIN, WORDS_MAX = 475, 750
 RECENT_MAX, OLDER_MAX = 5, 3
@@ -196,6 +198,13 @@ def shape_resume(text: str, out: list):
         if CONTEXT_OPENER.match(b):
             out.append({"level": "SHAPE", "line": n, "match": "context-clause opener",
                         "fix": "front-load: put the result or metric in the first 5-8 words", "context": b[:110]})
+        if BYSTANDER_OPENER.match(b):
+            out.append({"level": "SHAPE", "line": n, "match": "bystander opener",
+                        "fix": "say what you built or owned; keep only if a shared effort is the honest version",
+                        "context": b[:110]})
+        elif ACTIVITY_OPENER.match(b):
+            out.append({"level": "SHAPE", "line": n, "match": "activity opener (-ing)",
+                        "fix": "describes doing, not done; lead with a past-tense verb or the result", "context": b[:110]})
     team = sum(len(TEAM_WORDS.findall(b)) for _, _, b in bl)
     if team >= 3:
         out.append({"level": "SHAPE", "line": 0, "match": f"team/assist words used {team} times",

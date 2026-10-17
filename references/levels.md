@@ -4,6 +4,7 @@ Stored in the profile frontmatter as `target_levels` (one or more keys below) an
 
 | Key | Pages | Summary leads with | Bullets lead with |
 |---|---|---|---|
+| `entry` | 1 | target role and degree, or skip the summary | what you built, the tools, a number (users, data size, benchmark) |
 | `senior` | 1-2 | specialty and the systems built | what you built, scale, result |
 | `staff` | 2 | specialty and cross-team scope | decisions that spanned teams, who adopted them |
 | `principal` | 2 | the technical direction set across an org | org-wide strategy, standards, external standing |
@@ -11,6 +12,15 @@ Stored in the profile frontmatter as `target_levels` (one or more keys below) an
 | `director` | 2 | org size, number of managers, business area | org outcomes, business metrics, the org you built |
 | `vp` | 2 | org scale, budget, business results | company-level outcomes, strategy, exec partnership |
 | `architect` | 2 | domain and the systems shaped | architecture decisions, platform adoption, cost/reliability |
+
+## entry
+Students, new grads, bootcamp grads, and early-career engineers (internships, under ~3 years). One page.
+
+- Section order: Education first (degree, school, graduation month and year; GPA only if 3.5+; one line of relevant coursework), then Experience or Projects, whichever is stronger, then Skills. A short Summary is optional.
+- Projects carry as much weight as internships. Give each a plain title that says what it is ("Actor connection finder", not "Project 2"), then 2-3 bullets with the tools and a number: users, data size, latency, a benchmark, a test result.
+- The strongest technical item goes first. Readers judge the rest of the page by it.
+- Titles stay as they were. If an internal title hides the work ("Hardware/Software Intern" for a software role), keep it and add an accurate functional label in parentheses only if it's true. Never rename the job.
+- TA roles, research, hackathons, and open-source contributions count as experience when they involved building something.
 
 ## senior
 Shows independent ownership of significant systems. Evidence: features or services owned end to end, production scale, on-call and reliability work, mentoring juniors, design docs written. Keep the stack visible in bullets.

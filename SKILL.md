@@ -48,7 +48,7 @@ Workspace = current directory if `profile/career-profile.md` exists there; other
 | `tech-resume` (no args; agent-specific invocation) | If no profile: explain the flow, ask whether they have an existing resume or LinkedIn PDF to start from (`init`), otherwise start `profile`. If profile exists: show target level, profile completeness (roles with < 2 quantified facts), recent applications; ask what's next. |
 | `init <file...>` | Seed a new profile from existing resumes (PDF, DOCX, TXT, MD) and/or a LinkedIn PDF export. See "init" below. |
 | `profile` | Build or extend the master profile. Read [references/interview.md](references/interview.md). |
-| `base` | List base resumes from `profile/bases/bases.md`. `base new <file>` seeds another base from a resume file (see "Base resumes"). `base show <name>` builds and shows that base's PDF. |
+| `base` | List base resumes from `profile/bases/bases.md`. `base new <file>` seeds another base from a resume file (see "Base resumes"). `base show <name>` builds and shows that base's PDF. `base tune <name>` runs `scripts/keyword_trends.py` over the saved applications, shows the recurring JD terms that base doesn't prove in a bullet, asks which ones the user can back up (and with what fact), adds those facts to the profile, and updates the base. Never add a term the user can't back up. |
 | `target` | Show the current target. `target <level...>` changes it. Read [references/levels.md](references/levels.md). |
 | `apply <JD>` | Gap questions, then resume and cover letter. Default when the user just pastes a JD or URL. |
 | `resume <JD>` | Gap questions, then resume only. |
@@ -63,7 +63,7 @@ The profile frontmatter can hold `writing_rules`: standing instructions from the
 
 ## Target level
 
-The target level is stored in the profile frontmatter (`target_levels`, `target_roles`). If it's empty when any writing command runs, ask before writing (allow multiple selections): Senior IC, Staff/Principal IC, Engineering Manager, Director, VP/Head of Engineering/CTO, Architect/Platform/DevOps/SRE, plus "other". Also ask the target role titles they want to be seen as. A JD that clearly sits at a different level than the target: point it out and ask which level to write for this application (don't silently change the stored target).
+The target level is stored in the profile frontmatter (`target_levels`, `target_roles`). If it's empty when any writing command runs, ask before writing (allow multiple selections): Entry level / new grad / intern, Senior IC, Staff/Principal IC, Engineering Manager, Director, VP/Head of Engineering/CTO, Architect/Platform/DevOps/SRE, plus "other". Also ask the target role titles they want to be seen as. A JD that clearly sits at a different level than the target: point it out and ask which level to write for this application (don't silently change the stored target).
 
 ## `init` workflow
 
@@ -98,7 +98,7 @@ A base is a cleaned, generic resume the user can start applications from. Users 
    python3 "$SKILL_DIR/scripts/build.py" resume.md --out-dir . --basename First-Last-Resume-Company
    python3 "$SKILL_DIR/scripts/verify.py" --source resume.md --pdf First-Last-Resume-Company.pdf --docx First-Last-Resume-Company.docx --keywords keywords.txt --max-pages 2
    ```
-   Fix every FAIL. For WARNs: missing must-haves either get evidence (ask the user) or are left out deliberately and noted; "only in Skills" terms get a supporting bullet or go on the role's `Stack:` line if the user has the experience. Page count or word count over budget: cut the oldest and weakest bullets first. Render page 1 to PNG (`pdftoppm -png -r 70 -f 1 -l 1`) and look at it once.
+   Fix every FAIL. For WARNs: missing must-haves either get evidence (ask the user) or are left out deliberately and noted; "only in Skills" terms get a supporting bullet or go on the role's `Stack:` line if the user has the experience. Page count or word count over budget: cut the oldest and weakest bullets first. `build.py` also prints a WARN for each widow line (a bullet whose last line holds only one or two words): trim a few words or add a detail until it's gone. Render page 1 to PNG (`pdftoppm -png -r 70 -f 1 -l 1`) and look at it once.
 8. **Report.** Write `report.md` and tell the user: files made, must-have coverage, what was left out on purpose and why, remaining WARNs, and the 2-3 facts that would most improve this resume if they can find them.
 
 ## `cover` workflow
@@ -117,9 +117,10 @@ Also give the letter as plain text in the reply, since many portals take it in a
 | Script | Purpose |
 |---|---|
 | `scripts/extract.py` | Existing resume (PDF/DOCX/TXT/MD) to plain text plus a parse report (contact found, dates, header/table/column/ligature/image-only warnings). |
-| `scripts/build.py` | Markdown source to DOCX + PDF. Single column, embedded Arial, no ligatures, contact info in body, dates right-aligned by tab stop. `--font Arial\|Georgia\|Calibri`, `--size 10-11.5`. |
+| `scripts/build.py` | Markdown source to DOCX + PDF. Single column, embedded Arial, no ligatures, contact info in body, dates right-aligned by tab stop, company names bold. Warns on widow lines in bullets. `--font Arial\|Georgia\|Calibri`, `--size 10-11.5`. |
 | `scripts/verify.py` | Parse test: text layer, name first, email/phone, header/footer, hidden text, odd unicode, headings, date format, fonts, size, page count, word budget, keyword coverage by section. Exit 1 on FAIL. |
-| `scripts/lint.py` | AI-tell and generic-writing scanner for resumes and letters, plus resume shape: bullets per role, word budget, pronouns in bullets, context-clause openers, overused team words. Merges unslop's scanner hits. Exit 1 on any HARD. |
+| `scripts/keyword_trends.py` | Ranks JD keywords that recur across `applications/*/keywords.txt` and shows whether a base resume proves each one in a bullet, only in Skills, or not at all. Used by `base tune`. |
+| `scripts/lint.py` | AI-tell and generic-writing scanner for resumes and letters, plus resume shape: bullets per role, word budget, pronouns in bullets, context-clause, bystander ("Assisted", "Helped"), and -ing activity openers, overused team words. Merges unslop's scanner hits. Exit 1 on any HARD. |
 
 Requires `python-docx`, `reportlab`, `pypdf`; `pdftotext`/`pdftoppm` (poppler) recommended. If a dependency is missing, tell the user the install command (`pip install python-docx reportlab pypdf`, `brew install poppler`) rather than switching to a different generator.
 
