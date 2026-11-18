@@ -379,6 +379,22 @@ def register_font(font: str) -> tuple[str, str]:
     return "Helvetica", "Helvetica-Bold"
 
 
+FRAME_PAD = 6.0    # ReportLab's default Frame padding per side; text is wrapped inside it
+MAX_PULL_IN = 10.0  # points a paragraph may extend into the right margin to win back a line (margin is ~50)
+
+
+def last_line_words(p, width: float) -> tuple[int, int]:
+    """(line count, words on the last line) when Paragraph p is wrapped at width."""
+    p.wrap(width, 10_000)
+    lines = getattr(p, "blPara", None) and p.blPara.lines
+    if not lines:
+        return 0, 0
+    last = lines[-1]
+    if isinstance(last, tuple):
+        return len(lines), len(last[1])
+    return len(lines), len(" ".join(getattr(f, "text", "") for f in getattr(last, "words", [])).split())
+
+
 def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line: str):
     from xml.sax.saxutils import escape
 
@@ -452,6 +468,32 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
                 else:
                     c.drawString(0, y - lead, self.right)
 
+    text_width = LETTER[0] - 1.4 * inch - 2 * FRAME_PAD
+    pulled: list[str] = []
+
+    def fit_para(markup, style, src, bullet=None):
+        """Paragraph that avoids a 1-2 word last line when a few points of width are enough.
+
+        Lets the paragraph run up to MAX_PULL_IN points into the right margin so the stray
+        words move up and the bullet takes one line less. The text is never changed. If
+        that is not enough the paragraph is left alone and widow_lines() reports it.
+        """
+        def mk(st):
+            return Paragraph(markup, st, bulletText=bullet) if bullet else Paragraph(markup, st)
+
+        para_ = mk(style)
+        n0, tail = last_line_words(para_, text_width)
+        if n0 >= 2 and 0 < tail <= 2:
+            k = 2.0
+            while k <= MAX_PULL_IN:
+                wide = mk(ParagraphStyle(f"{style.name}_pull", parent=style, rightIndent=-k))
+                n1, _ = last_line_words(wide, text_width)
+                if n1 < n0:
+                    pulled.append(src[:60])
+                    return wide
+                k += 2.0
+        return para_
+
     contact_markup = "".join(
         f'<a href="{escape(href, {chr(34): "&quot;"})}">{escape(seg)}</a>' if href else escape(seg)
         for seg, href in link_segments(doc.contact)
@@ -475,27 +517,29 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
                 if is_skills:
                     lab, val = split_label(b)
                     txt = (f"<b>{escape(lab)}:</b> " if lab else "") + escape(val)
-                    para_s = Paragraph(txt, ParagraphStyle("sk", parent=body_st, spaceAfter=1.5))
+                    para_s = fit_para(txt, ParagraphStyle("sk", parent=body_st, spaceAfter=1.5), b)
                     bullet_paras.append((b, para_s))
                     story.append(para_s)
                 else:
-                    para_b = Paragraph(escape(b), bullet_st, bulletText="•")
+                    para_b = fit_para(escape(b), bullet_st, b, bullet="•")
                     bullet_paras.append((b, para_b))
                     story.append(para_b)
             for e in sec.entries:
-                story += [Spacer(1, 4), TitleLine(e.title, e.dates)]
+                before_title = Spacer(1, 4)
+                before_title.keepWithNext = 1  # keeps a heading, a title and its first bullet in one chain
+                story += [before_title, TitleLine(e.title, e.dates)]
                 if e.org or e.location:
                     sub = (f"<b>{escape(e.org)}</b>" if e.org else "") + \
                           ((", " if e.org else "") + escape(e.location) if e.location else "")
                     story.append(Paragraph(sub, body_kwn))
                 for t in e.text:
-                    para_t = Paragraph(escape(t), body_kwn)
+                    para_t = fit_para(escape(t), body_kwn, t)
                     bullet_paras.append((t, para_t))
                     story.append(para_t)
                 for b in e.bullets:
                     lab, val = stack_label(b)
                     txt = (f"<b>{escape(lab)}:</b> " if lab else "") + escape(val)
-                    para_b = Paragraph(txt, bullet_st, bulletText="•")
+                    para_b = fit_para(txt, bullet_st, b, bullet="•")
                     bullet_paras.append((b, para_b))
                     story.append(para_b)
 
@@ -513,24 +557,23 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
         creator="tech-resume skill",
     )
     pdf.build(story)
-    return widow_lines(bullet_paras, LETTER[0] - 1.4 * inch)
+    if pulled:
+        print(f"note: tightened {len(pulled)} line(s) by up to {MAX_PULL_IN:g}pt so a 1-2 word last line moved up "
+              f"(text unchanged): {pulled}", file=sys.stderr)
+    return widow_lines(bullet_paras, text_width)
 
 
 def widow_lines(bullet_paras: list, width: float, max_words: int = 2) -> list[str]:
-    """Paragraphs (bullets, skills rows, role text) whose last rendered line holds only 1-2 words (wasted line, looks sparse)."""
+    """Paragraphs (bullets, skills rows, role text) whose last rendered line holds only 1-2 words (wasted line, looks sparse).
+
+    width must be the real text width: the page minus margins minus the frame padding.
+    """
     widows = []
     for src, p in bullet_paras:
-        p.wrap(width, 10_000)
-        lines = getattr(p, "blPara", None) and p.blPara.lines
-        if not lines or len(lines) < 2:
-            continue
-        last = lines[-1]
-        if isinstance(last, tuple):
-            words = last[1]
-        else:
-            words = " ".join(getattr(f, "text", "") for f in getattr(last, "words", [])).split()
-        if 0 < len(words) <= max_words:
-            widows.append(f"{' '.join(words)!r} <- {src[:70]}")
+        n, words = last_line_words(p, width)
+        if n >= 2 and 0 < words <= max_words:
+            last = " ".join(src.split()[-words:])
+            widows.append(f"{last!r} <- {src[:70]}")
     return widows
 
 
