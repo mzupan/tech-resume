@@ -48,6 +48,7 @@ LIGATURES = re.compile("[ﬀ-ﬆ]")
 MONTHS = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
 DATE_RANGE = re.compile(rf"^{MONTHS} \d{{4}} - ({MONTHS} \d{{4}}|Present)$")
 YEAR_ONLY = re.compile(r"^(\d{4}|\d{4} - (\d{4}|Present))$")
+SINGLE_DATE = re.compile(rf"^{MONTHS} \d{{4}}$")  # graduation or award dates, e.g. 'May 2015'
 
 results: list[tuple[str, str]] = []
 
@@ -124,12 +125,15 @@ def check_docx(path: Path) -> str:
     return text
 
 
-def check_text(label: str, text: str, kind: str):
+def check_text(label: str, text: str, kind: str, no_phone: bool = False):
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     head = "\n".join(lines[:4])
     if kind == "resume" or kind == "cover":
         report("PASS" if re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", head) else "FAIL", f"{label}: email in top lines")
-        report("PASS" if re.search(r"\(?\d{3}\)?[ .-]?\d{3}[ .-]?\d{4}", head) else "WARN", f"{label}: phone in top lines")
+        if no_phone:
+            report("PASS", f"{label}: phone omitted by choice (--no-phone)")
+        else:
+            report("PASS" if re.search(r"\(?\d{3}\)?[ .-]?\d{3}[ .-]?\d{4}", head) else "WARN", f"{label}: phone in top lines")
     lig = LIGATURES.findall(text)
     report("PASS" if not lig else "FAIL", f"{label}: no ligature glyphs" if not lig else f"{label}: ligatures {set(lig)}")
     bad = {}
@@ -165,12 +169,12 @@ def check_source(src: Path, kind: str, keywords: Path | None, max_pages: int):
     for r in roles:
         parts = [p.strip() for p in r.split("|")]
         d = parts[3] if len(parts) > 3 else ""
-        if d and not (DATE_RANGE.match(d) or YEAR_ONLY.match(d)):
+        if d and not (DATE_RANGE.match(d) or YEAR_ONLY.match(d) or SINGLE_DATE.match(d)):
             bad_dates.append(d)
         if len(parts) < 4:
             bad_dates.append(f"(missing field) {r}")
     report("PASS" if not bad_dates else "WARN",
-           "role dates use 'Mon YYYY - Mon YYYY|Present'" if not bad_dates else f"date format issues: {bad_dates}")
+           "role dates use 'Mon YYYY - Mon YYYY|Present' (or 'Mon YYYY' / 'YYYY' for education)" if not bad_dates else f"date format issues: {bad_dates}")
     return text
 
 
@@ -252,6 +256,8 @@ def main():
     ap.add_argument("--max-pages", type=int, default=None)
     ap.add_argument("--min-words", type=int, default=475)
     ap.add_argument("--max-words", type=int, default=750)
+    ap.add_argument("--no-phone", action="store_true",
+                    help="the user chose to leave the phone number off; skip the phone check")
     a = ap.parse_args()
     max_pages = a.max_pages or (1 if a.type == "cover" else 2)
 
@@ -259,7 +265,7 @@ def main():
     extracted = []
     if a.pdf:
         t = check_pdf(a.pdf, max_pages)
-        check_text("PDF", t, a.type)
+        check_text("PDF", t, a.type, a.no_phone)
         extracted.append(("PDF", t))
         first = next((l for l in t.splitlines() if l.strip()), "")
         name = re.search(r"^# (.+)$", md, re.M)
@@ -268,7 +274,7 @@ def main():
                    f"PDF first line is the name ('{first.strip()[:40]}')")
     if a.docx:
         t = check_docx(a.docx)
-        check_text("DOCX", t, a.type)
+        check_text("DOCX", t, a.type, a.no_phone)
         extracted.append(("DOCX", t))
     if a.type == "resume" and extracted:
         words = len(extracted[0][1].split())

@@ -361,11 +361,23 @@ def unslop_hits(path: Path) -> list:
 
 
 def main():
+    global WORDS_MIN, WORDS_MAX, RECENT_MAX, OLDER_MAX
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("source", type=Path)
     ap.add_argument("--type", choices=["resume", "cover"], default="resume")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--min-words", type=int, default=WORDS_MIN, help="resume word budget floor (default %(default)s)")
+    ap.add_argument("--max-words", type=int, default=WORDS_MAX, help="resume word budget ceiling (default %(default)s)")
+    ap.add_argument("--max-bullets-recent", type=int, default=RECENT_MAX,
+                    help="bullet cap for each of the two most recent roles (default %(default)s)")
+    ap.add_argument("--max-bullets-older", type=int, default=OLDER_MAX,
+                    help="bullet cap for older roles (default %(default)s)")
     a = ap.parse_args()
+    # Budgets are defaults for a typical resume. When the user has chosen a denser one
+    # (long history, or asked to keep every relevant bullet), pass the real limits so
+    # the report stays quiet about a decision already made.
+    WORDS_MIN, WORDS_MAX = a.min_words, a.max_words
+    RECENT_MAX, OLDER_MAX = a.max_bullets_recent, a.max_bullets_older
 
     text = scrub(a.source.read_text(encoding="utf-8"))
     out: list = []
