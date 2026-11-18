@@ -6,7 +6,8 @@ Layout: single column, left aligned, plain section headings, dates right
 aligned on the job-title line, contact info in the document body (never in a
 Word header/footer), no tables, text boxes, images, icons, or columns.
 Fonts are embedded (PDF) and no ligatures are produced, so the text layer
-extracts cleanly.
+extracts cleanly. The email and any domain or URL in the contact line become
+clickable links; the visible text is unchanged.
 
 Resume source format (see templates/resume.md):
 
@@ -158,6 +159,37 @@ def stack_label(b: str) -> tuple[str, str]:
     return (m.group(1), m.group(2)) if m else ("", b)
 
 
+CONTACT_LINK = re.compile(
+    r"(?P<email>[\w.+-]+@[\w-]+(?:\.[\w-]+)+)"
+    r"|(?P<url>(?:https?://)?(?:[\w-]+\.)+[A-Za-z]{2,}(?:/[^\s|,;]*)?)"
+)
+
+
+def link_segments(text: str) -> list[tuple[str, str]]:
+    """Split a contact line into (text, href) pieces; href is '' for plain text.
+
+    Emails become mailto: links and domains or URLs (linkedin.com/in/x,
+    github.com/x, example.dev) become https links. The visible text is never
+    changed, so ATS and LLM text extraction still sees exactly what was typed.
+    """
+    out: list[tuple[str, str]] = []
+    pos = 0
+    for m in CONTACT_LINK.finditer(text):
+        raw = m.group(0)
+        trimmed = raw.rstrip(".)")  # a trailing sentence period is not part of the link
+        if m.group("email"):
+            href = "mailto:" + trimmed
+        else:
+            href = trimmed if trimmed.lower().startswith("http") else "https://" + trimmed
+        if m.start() > pos:
+            out.append((text[pos:m.start()], ""))
+        out.append((trimmed, href))
+        pos = m.start() + len(trimmed)
+    if pos < len(text):
+        out.append((text[pos:], ""))
+    return out
+
+
 def split_label(b: str) -> tuple[str, str]:
     """'Languages: Go, Rust' -> ('Languages', 'Go, Rust') for skill rows."""
     m = re.match(r"^([A-Za-z0-9 &/+\-]{2,40}):\s+(.*)$", b)
@@ -228,8 +260,26 @@ def build_docx(doc: Doc, out: Path, kind: str, font: str, size: float, date_line
             r.bold = True
         p.add_run(text)
 
+    def add_link(p, text, url):
+        from docx.opc.constants import RELATIONSHIP_TYPE as RT
+
+        rid = d.part.relate_to(url, RT.HYPERLINK, is_external=True)
+        h = OxmlElement("w:hyperlink")
+        h.set(qn("r:id"), rid)
+        r = OxmlElement("w:r")
+        t = OxmlElement("w:t")
+        t.text = text
+        r.append(t)
+        h.append(r)
+        p._p.append(h)
+
     para(doc.name, bold=True, sz=size + 7, after=1)
-    para(doc.contact, after=4)
+    contact_p = para(after=4)
+    for seg, href in link_segments(doc.contact):
+        if href:
+            add_link(contact_p, seg, href)
+        else:
+            contact_p.add_run(seg)
 
     if kind == "cover":
         para(date_line, before=10, after=10)
@@ -277,32 +327,55 @@ def build_docx(doc: Doc, out: Path, kind: str, font: str, size: float, date_line
 # ---------------------------------------------------------------- PDF
 
 
+# Each family lists the real font first, then metric-compatible open fonts that
+# ship with most Linux distributions, so the PDF still embeds a TrueType font.
+FONT_FILES = {
+    "Arial": [("Arial.ttf", "Arial Bold.ttf", "Arial"),
+              ("LiberationSans-Regular.ttf", "LiberationSans-Bold.ttf", "Liberation Sans"),
+              ("Arimo-Regular.ttf", "Arimo-Bold.ttf", "Arimo")],
+    "Georgia": [("Georgia.ttf", "Georgia Bold.ttf", "Georgia"),
+                ("Gelasio-Regular.ttf", "Gelasio-Bold.ttf", "Gelasio")],
+    "Calibri": [("calibri.ttf", "calibrib.ttf", "Calibri"),
+                ("Carlito-Regular.ttf", "Carlito-Bold.ttf", "Carlito")],
+}
+
+
+def find_font_pair(reg: str, bold: str) -> tuple[Path, Path] | None:
+    roots = [
+        Path("/System/Library/Fonts/Supplemental"),
+        Path("/Library/Fonts"),
+        Path.home() / "Library/Fonts",
+        Path("C:/Windows/Fonts"),
+        Path("/usr/share/fonts"),
+        Path("/usr/local/share/fonts"),
+        Path.home() / ".fonts",
+        Path.home() / ".local/share/fonts",
+    ]
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for r in root.rglob(reg):
+            b = r.parent / bold
+            if b.exists():
+                return r, b
+    return None
+
+
 def register_font(font: str) -> tuple[str, str]:
     """Embed a TrueType font if available; fall back to Helvetica."""
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
-    candidates = {
-        "Arial": ("Arial.ttf", "Arial Bold.ttf"),
-        "Georgia": ("Georgia.ttf", "Georgia Bold.ttf"),
-        "Calibri": ("calibri.ttf", "calibrib.ttf"),
-    }
-    dirs = [
-        Path("/System/Library/Fonts/Supplemental"),
-        Path("/Library/Fonts"),
-        Path.home() / "Library/Fonts",
-        Path("/usr/share/fonts/truetype/msttcorefonts"),
-        Path("/usr/share/fonts/truetype/liberation"),
-    ]
-    reg, bold = candidates.get(font, candidates["Arial"])
-    for dd in dirs:
-        r, b = dd / reg, dd / bold
-        if r.exists() and b.exists():
-            pdfmetrics.registerFont(TTFont(f"{font}-R", str(r)))
-            pdfmetrics.registerFont(TTFont(f"{font}-B", str(b)))
+    for reg, bold, label in FONT_FILES.get(font, FONT_FILES["Arial"]):
+        found = find_font_pair(reg, bold)
+        if found:
+            pdfmetrics.registerFont(TTFont(f"{font}-R", str(found[0])))
+            pdfmetrics.registerFont(TTFont(f"{font}-B", str(found[1])))
             pdfmetrics.registerFontFamily(f"{font}-R", normal=f"{font}-R", bold=f"{font}-B")
+            if label != font:
+                print(f"note: {font} not installed; embedding {label} (metric-compatible)", file=sys.stderr)
             return f"{font}-R", f"{font}-B"
-    print(f"note: {font} TTF not found, using built-in Helvetica", file=sys.stderr)
+    print(f"note: {font} TTF not found, using built-in Helvetica (not embedded)", file=sys.stderr)
     return "Helvetica", "Helvetica-Bold"
 
 
@@ -325,6 +398,7 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
     name_st = ParagraphStyle("name", parent=base, fontName=bold, fontSize=size + 7, leading=size + 10)
     contact_st = ParagraphStyle("contact", parent=base, spaceAfter=4)
     body_st = ParagraphStyle("body", parent=base, spaceAfter=2)
+    body_kwn = ParagraphStyle("body_kwn", parent=body_st, keepWithNext=1)  # org line / role text stay with the first bullet
     letter_st = ParagraphStyle("letter", parent=base, spaceAfter=9, leading=size * 1.35)
     bullet_st = ParagraphStyle(
         "bullet", parent=base, leftIndent=14, bulletIndent=3, spaceAfter=1.5, bulletFontName=reg
@@ -335,6 +409,7 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
             super().__init__()
             self.text, self.width = text.upper(), width
             self.height = size + 7
+            self.keepWithNext = 1  # never leave a section heading alone at the bottom of a page
 
         def wrap(self, aw, ah):
             self.width = aw
@@ -354,6 +429,7 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
         def __init__(self, left, right):
             super().__init__()
             self.left, self.right = left, right
+            self.keepWithNext = 1  # never leave a job title alone at the bottom of a page
 
         def wrap(self, aw, ah):
             from reportlab.pdfbase.pdfmetrics import stringWidth
@@ -376,8 +452,12 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
                 else:
                     c.drawString(0, y - lead, self.right)
 
-    story = [Paragraph(escape(doc.name), name_st), Paragraph(escape(doc.contact), contact_st)]
-    bullet_paras: list = []  # (source text, Paragraph) for the widow-line check
+    contact_markup = "".join(
+        f'<a href="{escape(href, {chr(34): "&quot;"})}">{escape(seg)}</a>' if href else escape(seg)
+        for seg, href in link_segments(doc.contact)
+    )
+    story = [Paragraph(escape(doc.name), name_st), Paragraph(contact_markup, contact_st)]
+    bullet_paras: list = []  # (source text, Paragraph) for the widow-line check (bullets, skills rows, role text)
 
     if kind == "cover":
         story += [Spacer(1, 10), Paragraph(escape(date_line), letter_st), Spacer(1, 2)]
@@ -385,7 +465,9 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
             story.append(Paragraph("<br/>".join(escape(x) for x in p.split("\n")), letter_st))
     else:
         for sec in doc.sections:
-            story += [Spacer(1, 6), Heading(sec.name, 0), Spacer(1, 3)]
+            after_heading = Spacer(1, 3)
+            after_heading.keepWithNext = 1
+            story += [Spacer(1, 6), Heading(sec.name, 0), after_heading]
             for p in sec.paragraphs:
                 story.append(Paragraph(escape(p), body_st))
             is_skills = sec.name.lower().startswith(("skill", "technical skill", "core skill"))
@@ -393,7 +475,9 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
                 if is_skills:
                     lab, val = split_label(b)
                     txt = (f"<b>{escape(lab)}:</b> " if lab else "") + escape(val)
-                    story.append(Paragraph(txt, ParagraphStyle("sk", parent=body_st, spaceAfter=1.5)))
+                    para_s = Paragraph(txt, ParagraphStyle("sk", parent=body_st, spaceAfter=1.5))
+                    bullet_paras.append((b, para_s))
+                    story.append(para_s)
                 else:
                     para_b = Paragraph(escape(b), bullet_st, bulletText="•")
                     bullet_paras.append((b, para_b))
@@ -403,9 +487,11 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
                 if e.org or e.location:
                     sub = (f"<b>{escape(e.org)}</b>" if e.org else "") + \
                           ((", " if e.org else "") + escape(e.location) if e.location else "")
-                    story.append(Paragraph(sub, body_st))
+                    story.append(Paragraph(sub, body_kwn))
                 for t in e.text:
-                    story.append(Paragraph(escape(t), body_st))
+                    para_t = Paragraph(escape(t), body_kwn)
+                    bullet_paras.append((t, para_t))
+                    story.append(para_t)
                 for b in e.bullets:
                     lab, val = stack_label(b)
                     txt = (f"<b>{escape(lab)}:</b> " if lab else "") + escape(val)
@@ -431,7 +517,7 @@ def build_pdf(doc: Doc, out: Path, kind: str, font: str, size: float, date_line:
 
 
 def widow_lines(bullet_paras: list, width: float, max_words: int = 2) -> list[str]:
-    """Bullets whose last rendered line holds only 1-2 words (wasted line, looks sparse)."""
+    """Paragraphs (bullets, skills rows, role text) whose last rendered line holds only 1-2 words (wasted line, looks sparse)."""
     widows = []
     for src, p in bullet_paras:
         p.wrap(width, 10_000)
@@ -486,7 +572,7 @@ def main():
     for p in made:
         print(p)
     for w in widows:
-        print(f"WARN widow line (1-2 words alone on a bullet's last line; trim a few words or add a detail): {w}",
+        print(f"WARN widow line (1-2 words alone on a paragraph's last line; trim a few words or add a detail): {w}",
               file=sys.stderr)
 
 
